@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>匿名聊天</title>
+</head>
+<body>
+  <h2>匿名聊天</h2>
+  <div id="status">連線中...</div>
+  <div id="chat" style="display:none;">
+    <div id="messages"></div>
+    <input id="input" type="text" placeholder="輸入訊息..." />
+    <button id="send">送出</button>
+  </div>
+
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script>
+    const socket = io('https://your-backend-name.onrender.com');
+
+    const status = document.getElementById('status');
+    const chat = document.getElementById('chat');
+    const messages = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+
+    socket.on('waiting', (data) => {
+      status.innerText = data.message;
+    });
+
+    socket.on('match', (data) => {
+      status.style.display = 'none';
+      chat.style.display = 'block';
+    });
+
+    socket.on('message', (msg) => {
+      const div = document.createElement('div');
+      div.innerText = '對方: ' + msg;
+      messages.appendChild(div);
+    });
+
+    socket.on('partner-disconnected', () => {
+      const div = document.createElement('div');
+      div.innerText = '對方已離線';
+      messages.appendChild(div);
+    });
+
+    send.onclick = () => {
+      const msg = input.value;
+      socket.emit('message', msg);
+      const div = document.createElement('div');
+      div.innerText = '你: ' + msg;
+      messages.appendChild(div);
+      input.value = '';
+    };
+  </script>
+</body>
+</html>
