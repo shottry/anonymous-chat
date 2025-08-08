@@ -1,56 +1,199 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>匿名聊天</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>匿名聊天 - 清新風</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+  body {
+    margin: 0; padding: 0;
+    font-family: 'Nunito', sans-serif;
+    background: #e6f2ea;
+    display: flex; justify-content: center; align-items: center;
+    height: 100vh;
+  }
+
+  .chat-container {
+    width: 100%; max-width: 480px;
+    height: 80vh;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-header {
+    padding: 16px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: #2f6d3f;
+    border-bottom: 1px solid #d3e3d2;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f0faf4;
+  }
+
+  .message {
+    display: flex;
+    margin-bottom: 12px;
+  }
+
+  .message.you {
+    justify-content: flex-end;
+  }
+
+  .bubble {
+    max-width: 70%;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 1rem;
+    line-height: 1.3;
+    word-break: break-word;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .message.you .bubble {
+    background: #a4d3a2;
+    color: #1b3a1a;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.other .bubble {
+    background: #d9f0d9;
+    color: #2e5532;
+    border-bottom-left-radius: 4px;
+  }
+
+  .typing-indicator {
+    height: 24px;
+    margin: 0 16px 8px 16px;
+    font-size: 0.9rem;
+    color: #527f53;
+    font-style: italic;
+    min-height: 24px;
+    user-select: none;
+  }
+
+  .chat-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid #d3e3d2;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+  }
+
+  .chat-input-area input {
+    flex: 1;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 16px;
+    font-size: 1rem;
+    background: #eaf5ec;
+    color: #2f6d3f;
+    outline: none;
+    transition: background-color 0.3s;
+  }
+
+  .chat-input-area input:focus {
+    background-color: #d4ecd1;
+  }
+
+  .chat-input-area button {
+    margin-left: 12px;
+    background: #2f6d3f;
+    color: white;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .chat-input-area button:hover {
+    background-color: #23532a;
+  }
+</style>
 </head>
 <body>
-  <h2>匿名聊天</h2>
-  <div id="status">連線中...</div>
-  <div id="chat" style="display:none;">
-    <div id="messages"></div>
-    <input id="input" type="text" placeholder="輸入訊息..." />
-    <button id="send">送出</button>
-  </div>
 
-  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-  <script>
-    const socket = io('https://anonymous-chat-backend-qpwx.onrender.com');    
-    const status = document.getElementById('status');
-    const chat = document.getElementById('chat');
-    const messages = document.getElementById('messages');
-    const input = document.getElementById('input');
-    const send = document.getElementById('send');
+<div class="chat-container">
+  <div class="chat-header">匿名聊天</div>
+  <div id="messages" class="chat-messages"></div>
+  <div id="typingIndicator" class="typing-indicator"></div>
+  <form id="chatForm" class="chat-input-area" autocomplete="off">
+    <input id="inputMessage" type="text" placeholder="輸入訊息..." />
+    <button type="submit">送出</button>
+  </form>
+</div>
 
-    socket.on('waiting', (data) => {
-      status.innerText = data.message;
-    });
+<script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+<script>
+  const socket = io('https://anonymous-chat-backend-qpwx.onrender.com'); // 改成你的後端網址
+  const messagesEl = document.getElementById('messages');
+  const typingIndicator = document.getElementById('typingIndicator');
+  const chatForm = document.getElementById('chatForm');
+  const inputMessage = document.getElementById('inputMessage');
 
-    socket.on('match', (data) => {
-      status.style.display = 'none';
-      chat.style.display = 'block';
-    });
+  function addMessage(text, fromYou = true) {
+    const msgEl = document.createElement('div');
+    msgEl.classList.add('message', fromYou ? 'you' : 'other');
+    const bubble = document.createElement('div');
+    bubble.classList.add('bubble');
+    bubble.textContent = text;
+    msgEl.appendChild(bubble);
+    messagesEl.appendChild(msgEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 
-    socket.on('message', (msg) => {
-      const div = document.createElement('div');
-      div.innerText = '對方: ' + msg;
-      messages.appendChild(div);
-    });
+  // 傳送訊息
+  chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const msg = inputMessage.value.trim();
+    if (!msg) return;
+    addMessage(msg, true);
+    socket.emit('message', msg);
+    inputMessage.value = '';
+    socket.emit('typing', false); // 停止輸入
+  });
 
-    socket.on('partner-disconnected', () => {
-      const div = document.createElement('div');
-      div.innerText = '對方已離線';
-      messages.appendChild(div);
-    });
+  // 接收訊息
+  socket.on('message', (msg) => {
+    addMessage(msg, false);
+  });
 
-    send.onclick = () => {
-      const msg = input.value;
-      socket.emit('message', msg);
-      const div = document.createElement('div');
-      div.innerText = '你: ' + msg;
-      messages.appendChild(div);
-      input.value = '';
-    };
-  </script>
+  // 輸入提示
+  let typingTimeout;
+  inputMessage.addEventListener('input', () => {
+    socket.emit('typing', true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('typing', false);
+    }, 1500);
+  });
+
+  // 顯示對方輸入提示
+  socket.on('typing', (isTyping) => {
+    typingIndicator.textContent = isTyping ? '對方正在輸入...' : '';
+  });
+
+  // 連線狀態提示
+  socket.on('connect', () => {
+    addMessage('系統訊息：已連線', false);
+  });
+
+  socket.on('disconnect', () => {
+    addMessage('系統訊息：已斷線', false);
+  });
+</script>
+
 </body>
 </html>
